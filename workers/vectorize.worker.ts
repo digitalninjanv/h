@@ -266,6 +266,7 @@ async function preprocess(
 
 async function traceToSvg(image: ImageData, settings: TraceSettings, analysis: ImageAnalysis): Promise<string> {
   const kind = settings.mode === 'auto' ? analysis.recommendedMode : settings.mode;
+  const isTextLike = analysis.kind === 'text';
   const scale = Math.max(1, Math.round(1000 / Math.max(image.width, image.height)));
 
   if (kind === 'photo' || (kind === 'auto' && analysis.kind === 'photo')) {
@@ -302,11 +303,11 @@ async function traceToSvg(image: ImageData, settings: TraceSettings, analysis: I
   const work = shouldInvertMonochrome(image, analysis, settings) ? invertImageData(image) : image;
   const bitmap = potraceModule.imageDataToBitmap(work, thresholdValue);
   const paths = potraceModule.traceBitmap(bitmap, {
-    turnpolicy: kind === 'text' ? 'black' : 'minority',
+    turnpolicy: isTextLike ? 'black' : 'minority',
     turdsize: clampInt(Math.round(settings.noiseReduction / 10), 0, 24),
     optcurve: true,
     alphamax: kind === 'flat-icon' ? 1.2 : kind === 'logo' ? 1.0 : 0.9,
-    opttolerance: kind === 'text' ? 0.2 : kind === 'photo' ? 0.35 : 0.25,
+    opttolerance: isTextLike ? 0.2 : 0.25,
   } as any);
 
   return potraceModule.getSVG(paths, 1);
@@ -330,13 +331,6 @@ function averageLuminance(image: ImageData): number {
     count += 1;
   }
   return sum / Math.max(1, count);
-}
-
-function inferMime(filename: string): string {
-  const lower = filename.toLowerCase();
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  return 'image/png';
 }
 
 function removeBackground(image: ImageData, threshold: number): ImageData {
@@ -539,16 +533,23 @@ async function finalizeSvg(svg: string, width: number, height: number): Promise<
 
   try {
     const { optimize } = await import('svgo/browser');
-    const optimized = optimize(fixed, {
+    const svgoConfig = {
       multipass: true,
       plugins: [
-        'preset-default',
-        { name: 'removeViewBox', active: false },
-        { name: 'removeTitle', active: true },
-        { name: 'removeDesc', active: true },
-        { name: 'removeDimensions', active: true },
+        {
+          name: 'preset-default',
+          params: {
+            overrides: {
+              removeViewBox: false,
+            },
+          },
+        },
+        'removeTitle',
+        'removeDesc',
+        'removeDimensions',
       ],
-    }) as unknown as { data: string };
+    };
+    const optimized = optimize(fixed, svgoConfig as any) as unknown as { data: string };
 
     return ensureSvgBasics(optimized.data ?? fixed, width, height);
   } catch {
