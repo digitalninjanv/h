@@ -1,0 +1,72 @@
+name: Auto unzip (flatten) and remove zip files
+
+on:
+  push:
+    branches:
+      - main      # GANTI kalau branch utama kamu bukan 'main'
+
+permissions:
+  contents: write
+
+jobs:
+  unzip_job:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Detect, unzip (flatten), and delete ZIP files
+        shell: bash
+        run: |
+          set -uo pipefail   # TIDAK pakai -e supaya satu error tidak hentikan semua
+
+          echo "=== Scan semua file .zip di repo (maksimal kedalaman 10) ==="
+          mapfile -t zips < <(find . -maxdepth 10 -type f -name "*.zip" ! -path "./.git/*")
+
+          if [ ${#zips[@]} -eq 0 ]; then
+            echo "Tidak ada file .zip ditemukan. Selesai."
+            exit 0
+          fi
+
+          echo "Ditemukan ${#zips[@]} file .zip"
+          shopt -s dotglob nullglob
+
+          for z in "${zips[@]}"; do
+            echo
+            echo "=== Proses ZIP: $z ==="
+            dir=$(dirname "$z")
+            tempdir=$(mktemp -d)
+
+            echo "Unzip ke folder sementara: $tempdir"
+            if ! unzip -o "$z" -d "$tempdir" >/dev/null; then
+              echo "!!! Gagal unzip $z, lewati file ini."
+              rm -rf "$tempdir"
+              continue
+            fi
+
+            # Cek isi level teratas di dalam unzip
+            entries=( "$tempdir"/* )
+
+            if [ ${#entries[@]} -eq 1 ] && [ -d "${entries[0]}" ]; then
+              echo "ZIP punya satu folder root (${entries[0]}), flatten isinya ke: $dir"
+              mv "${entries[0]}"/* "$dir"/ || true
+            else
+              echo "ZIP punya banyak item di root, pindahkan semua ke: $dir"
+              mv "$tempdir"/* "$dir"/ || true
+            fi
+
+            echo "Bersihkan folder sementara & hapus ZIP"
+            rm -rf "$tempdir"
+            rm -f "$z"
+
+          done
+
+          echo
+          echo "=== Selesai memproses semua ZIP ==="
+
+      - name: Commit changes (if any)
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: flatten unzip and remove zip files"
+          branch: main      # samakan dengan bagian 'on.push.branches'
