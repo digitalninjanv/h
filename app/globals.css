@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --bg: #07111f;
+  --fg: #e8eefc;
+  --muted: #9fb0cf;
+  --card: rgba(10, 18, 33, 0.82);
+  --border: rgba(148, 163, 184, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--fg);
+  background:
+    radial-gradient(circle at top, rgba(59, 130, 246, 0.18), transparent 42%),
+    radial-gradient(circle at right, rgba(16, 185, 129, 0.09), transparent 32%),
+    linear-gradient(180deg, #091120 0%, #050b16 100%);
+  font-feature-settings: "ss01" 1, "cv11" 1;
+}
+
+::selection {
+  background: rgba(96, 165, 250, 0.35);
+}
+
+@layer utilities {
+  .glass {
+    @apply border border-white/10 bg-slate-950/70 backdrop-blur-xl;
+  }
+  .panel {
+    @apply glass rounded-3xl shadow-soft;
+  }
+  .panel-title {
+    @apply text-sm font-semibold tracking-wide text-slate-100;
+  }
+  .label {
+    @apply text-xs font-medium uppercase tracking-[0.22em] text-slate-400;
+  }
+  .input {
+    @apply w-full rounded-2xl border border-white/10 bg-slate-950/60 px-4 py-3 text-sm text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400/40 focus:ring-2 focus:ring-sky-500/15;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:bg-white/10 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply border-sky-400/20 bg-sky-500/15 text-sky-100 hover:bg-sky-500/20;
+  }
+  .chip {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-200;
+  }
+}
